@@ -91,6 +91,10 @@ function draw() {
     div.innerHTML = sym ? sym.symbolName : "";
   });
 
+  canvas.addEventListener("mouseout", function () {
+    div.innerHTML = "";
+  });
+
   lines();
 }
 
