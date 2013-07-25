@@ -52,8 +52,9 @@
     <p>Bigger (flame) chart uses 20 pixels per sample. Since we can't fit
       all samples we have a smaller (overview) chart. That overview chart
       will have a controller to pick which sample range to show above
-      (not implemented yet). We will also need smarter color generated
-      algorithm.</p>
+      (not implemented yet). Normal frames are colored in shades of blue
+      while jank is colored in shades of red. (Also, jank frames have
+      cut-off corners so that we don't rely solely on color)</p>
 
     <p>Implementation uses hand-rolled canvas code. I played with d3 for a day
     but decided that it's an overkill for our purposes.</p> 

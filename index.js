@@ -4,9 +4,11 @@
 
 "use strict";
 
+var JANK = 15;
+
 function px(num)    { return parseInt(num, 10) + "px" }
-function hex(str)   { return "#" + str }
 function rnd(num)   { return Math.round(num) }
+function hsl(h, l)  { return "hsl(" + h + ", 53%, " + l  + "%)"; }
 function mean(nums) { return nums.reduce(function (p, c) { return p + c }, 0) / nums.length }
 function maxn(nums) { return nums.reduce(function (p, c) { return p > c ? p : c }, -1) }
 
@@ -19,27 +21,38 @@ function createCanvas(w, h) {
   return canvas;
 }
 
+function drawJank(ctx, x, y, w, h) {
+  var style = ctx.strokeStyle;
+  ctx.strokeStyle = "white";
+  ctx.beginPath();
+
+  var i = 3;
+  ctx.moveTo(x + w - i, y + h);
+  ctx.lineTo(x + w, y + h - i);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x + w - i, y + h);
+  ctx.fillStyle = "white";
+  ctx.fill();
+
+  ctx.stroke();
+  ctx.closePath();
+  ctx.strokeStyle = style;
+}
+
 function draw() {
   var data = DATA.allSamples
     .filter(function (sample) { return sample != null })
-    .map(function (sample, i) { return sample.frames });
+    .map(function (sample, i) { return sample });
 
   var colors = DATA.symbols.map(function () {
-    var ltr = "0123456789ABCDEF".split("");
-    var ret = "";
-
-    for (var i = 0; i < 6; i++) {
-      ret += ltr[rnd(Math.random() * 15)];
-    }
-
-    return hex(ret);
+    return rnd(Math.random() * 50) + 30;
   });
 
   var width  = 900;
   var height = 200;
   var canvas = createCanvas(width, height);
   var ctx    = canvas.getContext("2d");
-  var max    = maxn(data.map(function (frames) { return frames.length }));
+  var max    = maxn(data.map(function (sample) { return sample.frames.length }));
   var blocks = [];
 
   document.querySelector("#charts").appendChild(canvas);
@@ -50,8 +63,9 @@ function draw() {
   ctx.scale(-1, 1);
   ctx.rotate(Math.PI);
 
-  set.forEach(function (frames) {
-    h = height / max;
+  set.forEach(function (sample) {
+    var frames = sample.frames;
+    h = rnd(height / max);
 
     for (var xx = x; xx < x + 20; xx++) {
       blocks[xx] = new Array(frames.length);
@@ -59,9 +73,14 @@ function draw() {
 
     frames.forEach(function (frame, i) {
       var y = rnd(h * i);
+      var jank = sample.extraInfo.responsiveness > JANK;
 
-      ctx.fillStyle = colors[frame];
+      ctx.fillStyle = hsl(jank ? 1 : 195, colors[frame]);
       ctx.fillRect(x, y, 19, h - 1);
+
+      if (jank) {
+        drawJank(ctx, x, y, 19, h - 1);
+      }
 
       for (var xx = x; xx < x + 20; xx++) {
         for (var yy = y; yy < y + 20; yy++) {
@@ -98,25 +117,31 @@ function draw() {
   lines();
 }
 
+var MINIMAP_STEP = 5;
+var jankq = [];
+
 function lines() {
   var data = DATA.allSamples
     .filter(function (sample) { return sample != null })
-    .map(function (sample, i) { return sample.frames.length });
+    .map(function (sample, i) { return [ sample.frames.length, sample.extraInfo.responsiveness ] });
 
   var width  = 900;
   var height = 50;
-  var step   = rnd(data.length / (width / 5));
+  var step   = rnd(data.length / (width / MINIMAP_STEP));
   var canvas = createCanvas(width, height);
   var ctx    = canvas.getContext("2d");
 
   document.querySelector("#charts").appendChild(canvas);
 
   var avg = [];
-  for (var i = 0, samples; samples = data.slice(i, i + step), samples.length > 0; i += step) {
-    avg.push(mean(samples));
+  for (var i = 0, frames; frames = data.slice(i, i + step), frames.length > 0; i += step) {
+    avg.push([
+      mean(frames.map(function (f) { return f[0] })),
+      frames.some(function (f) { return f[1] > JANK })
+    ]);
   }
 
-  var max = maxn(avg);
+  var max = maxn(avg.map(function (f) { return f[0] }));
   var ppn = height / max;
   var h, x = 0;
 
@@ -125,9 +150,12 @@ function lines() {
   ctx.moveTo(0, canvas.height);
 
   for (var i = 0; i < avg.length - 1; i++) {
-    h = avg[i] * ppn;
-    ctx.lineTo(x + 5, height - (avg[i + 1] * ppn));
-    x += 5;
+    h = avg[i][0] * ppn;
+    if (avg[i][1]) {
+      jankq.push([x, x + MINIMAP_STEP]);
+    }
+    ctx.lineTo(x + MINIMAP_STEP, height - (avg[i + 1][0] * ppn));
+    x += MINIMAP_STEP;
   }
 
   ctx.lineTo(width, height);
@@ -137,4 +165,17 @@ function lines() {
   ctx.fillStyle = "lightblue";
   ctx.fill();
   ctx.stroke();
+
+  // Draw jank
+  var jankr;
+  while (jankr = jankq.pop()) {
+    ctx.strokeStyle = "red";
+    ctx.beginPath();
+    for (var xx = jankr[0]; xx < jankr[1]; xx += 2) {
+      ctx.moveTo(xx, 0);
+      ctx.lineTo(xx, height);
+    }
+    ctx.stroke();
+    ctx.closePath();
+  }
 }
