@@ -11,13 +11,28 @@
         text-align: left;
       }
 
-      canvas {
+      #bigmap {
         border: solid 1px #999;
         margin-bottom: 10px;
+        overflow: hidden;
+      }
+
+      #minimap {
+        border: solid 1px #999;
+        cursor: pointer;
+        overflow: hidden;
+      }
+
+      #minimap canvas {
+        margin-bottom: -1px;
+        margin-left: -1px;
       }
 
       .zoom {
-        background-color: green;
+        position: absolute;
+        border: solid 1px black;
+        transition-property: left;
+        transition-duration: 1s;
       }
 
       .symbol {
@@ -59,7 +74,8 @@
     <p>Implementation uses hand-rolled canvas code. I played with d3 for a day
     but decided that it's an overkill for our purposes.</p> 
 
-    <div id="charts"></div>
+    <div id="bigmap"></div>
+    <div id="minimap"></div>
 
     <p class="rel">Related: <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=879007">bug
       879007</a>, <a href="data.js">data file</a> used here.</p>
