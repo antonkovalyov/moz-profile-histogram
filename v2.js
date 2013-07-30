@@ -1,9 +1,9 @@
 var JANK = 15;
 
-var px  = (num)   => { return parseInt(num, 10) + "px" }
-var rnd = (num)   => { return Math.round(num) }
-var hsl = (h, l)  => { return "hsl(" + h + ", 53%, " + l + "%)" }
-var get = (query) => { return document.querySelector(query) }
+var px  = (num)  => parseInt(num, 10) + "px";
+var rnd = (num)  => Math.round(num);
+var hsl = (h, l) => "hsl(" + h + ", 53%, " + l + "%)";
+var get = (qr)   => document.querySelector(qr);
 
 function canvas(opts) {
   var el = document.createElement("canvas");
@@ -47,7 +47,7 @@ function cls() {
 function drawOverview(map, data) {
   var ctx = map.context;
   var hgt = rnd(map.element.height / data.max);
-  var flip = (val) => { return map.element.height - val - hgt };
+  var flip = (val) => map.element.height - val - hgt;
   var jank = [];
 
   ctx.clearRect(0, 0, map.element.width, map.element.height);
@@ -85,21 +85,61 @@ function drawOverview(map, data) {
 
 function drawOverlay(map, refmap, data, start) {
   var ctx = map.context;
-  ctx.clearRect(0, 0, map.element.width, map.element.height);
+  var cvs = map.element;
+  var scl = cvs.width / data.length;
+  var rec = map.element.getBoundingClientRect();
+  var xx  = null;
 
-  var x = 0;
-  for (var i = start; i < data.length && x < refmap.element.width; i++) {
-    x += 20;
+  function draw(s) {
+    var rx = 0;
+    s = rnd(s);
+    for (var i = s; rx < refmap.element.width; i++) {
+      rx += 20;
+    }
+
+    var x = s;
+    var w = i - s;
+    var y = -3;
+    var h = cvs.height + 6;
+
+    if (x < 0)
+      start = x = 0;
+
+    if (x + w > cvs.width / scl)
+      start = x = (cvs.width / scl) - w;
+
+    ctx.clearRect(0, 0, cvs.width / scl, cvs.height);
+    ctx.fillStyle = "hsla(179, 8%, 50%, 0.35)";
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = "black";
+    ctx.strokeRect(x, y, w, h);
+
+    drawBigmap(refmap, data, x);
   }
 
-  ctx.fillStyle = "hsla(179, 8%, 50%, 0.35)";
-  ctx.fillRect(start, 0, i - start, map.element.height);
-  ctx.strokeStyle = "black";
-  ctx.moveTo(start, 0);
-  ctx.lineTo(start, map.element.height);
-  ctx.moveTo(i, 0);
-  ctx.lineTo(i, map.element.height);
-  ctx.stroke();
+  function end(ev) {
+    if (xx === null)
+      return;
+
+    start = start + ((ev.clientX - rec.left - xx) / scl);
+
+    if (start < 0)
+      start = 0;
+
+    xx = null;
+  }
+
+  cvs.addEventListener("mousedown", (ev) => xx = ev.clientX - rec.left);
+  cvs.addEventListener("mouseout",  end);
+  cvs.addEventListener("mouseup",   end);
+  cvs.addEventListener("mousemove", (ev) => {
+    if (xx === null)
+      return;
+
+    draw(start + ((ev.clientX - rec.left - xx) / scl));
+  });
+
+  draw(start);
 }
 
 function main() {
@@ -107,7 +147,7 @@ function main() {
   var bigmap  = canvas({ width: 900, height: 200 });
   var minimap = canvas({ width: 900, height: 75 });
   var overlay = canvas({ width: 900, height: 75 });
-  var colors  = DATA.symbols.map(() => { return rnd(Math.random() * 50) + 30 });
+  var colors  = DATA.symbols.map(() => rnd(Math.random() * 50) + 30);
   var intmap  = null;
 
   get("#bigmap").appendChild(bigmap.element);
